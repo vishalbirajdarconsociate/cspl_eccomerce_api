@@ -7,3 +7,4 @@ from . import categoryBanners
 from . import priceRange
 from .  import increaseUnitBy
 from . import minOrderAmount
+from . import product_template

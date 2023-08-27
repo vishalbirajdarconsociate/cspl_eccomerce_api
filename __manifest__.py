@@ -32,6 +32,9 @@
         'views/increaseUnitBy.xml',
         'views/minOrderAmount.xml',
         'views/hidetax.xml',
+        'views/cron.xml',
+
+        
     ],
     # only loaded in demonstration mode
     'demo': [

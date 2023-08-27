@@ -32,6 +32,16 @@ class CsplEccomerceApi(http.Controller):
         except Exception as e:
             error_message = str(e)
             return {'error': error_message}
+    def user_info(self, user):
+        return { 'user': {
+                        "id":user.id
+                        ,"name":user.name
+                        ,"email":user.email
+                        ,"phone":user.phone
+                        ,'auth_token':user.auth_token
+                        ,"published":user.is_published
+                        ,"image":f"/web/image?model=res.partner&id={user.id}&field=avatar_128"
+                        }}
     @http.route('/api/login', type='json', auth='public', csrf=False, cors='*')
     def login(self,phone=None):
         User = request.env['res.partner']
@@ -45,6 +55,7 @@ class CsplEccomerceApi(http.Controller):
                         ,"email":user.email
                         ,"phone":user.phone
                         ,'auth_token':user.auth_token
+                        ,"image":f"/web/image?model=res.partner&id={user.id}&field=avatar_128"
                         }}
         else:
             return {'error': "Invalid credentials"}
@@ -113,6 +124,31 @@ class CsplEccomerceApi(http.Controller):
                 return {'error': 'Customer not found'}
         except Exception as e:
             return {'error': str(e)}
+        
+    @http.route('/api/customer_info', type='json', auth='public', csrf=False, cors='*')
+    def customer_info(self,customer_id=None,customer_token=None,update=False,**kw):
+        try:
+            partner = request.env['res.partner'].sudo().search([('id','=',customer_id),],limit=1)
+            if update :
+                # if request.env['res.partner'].sudo().search([('email','=',kw.get('email')),],limit=1) and kw.get('email') != partner.email:
+                #     return {'massage':'email already in use'}
+                # elif request.env['res.partner'].sudo().search([('phone','=',kw.get('phone')),],limit=1) and kw.get('phone') != partner.phone:
+                    # return {'massage':'number already in use'}
+                data={
+                    "name":kw.get('name') or partner.name,
+                    "email":kw.get('email') or partner.email,
+                    "phone":kw.get('phone') or partner.phone,
+                    "mobile":kw.get('phone') or partner.mobile,
+                    "avatar_1920":kw.get('avatar') or partner.avatar_1920,
+                    "image_1920":kw.get('avatar') or partner.image_1920,
+                    "profile_image":kw.get('avatar') or partner.profile_image,
+                    "is_published":True
+                    }
+                print(data)
+                partner.sudo().write(data)
+            return self.user_info(partner)
+        except Exception as e:
+            return {'error':e}
         
     @http.route('/api/logout', type='json', auth='public', csrf=False, cors='*')
     def logout(self, customer_id,customer_token):
@@ -194,6 +230,8 @@ class CsplEccomerceApi(http.Controller):
 
     @http.route('/api/categoryProduct' , auth='public', type='json', csrf=False, cors='*')
     def categoryProduct(self,lang='en_US',uid=None,category=None, slug=None,sort=None,minPrice=0,maxPrice=100000,tags=[],limit=12,page=1):
+        ProductCategory = request.env['product.category'].with_context(lang=lang)
+        service_categories = ProductCategory.sudo().search([("id","=",category) if category else ("slug","=",slug)],limit=1)
         products = request.env['product.template'].with_context(lang=lang)
         if sort=="latest":
              sortVal = 'create_date desc'
@@ -224,13 +262,14 @@ class CsplEccomerceApi(http.Controller):
         result['total_records']=total_records
         result['highestPrice'] =max(allData.mapped('list_price'))
         result['current_page']=page
-        result['elements']=f"{current_page+1}-{current_page+limit if limit==len(result['products']) else current_page+len(result['products'])}"
+        result['elements']=f"{current_page+1}-{current_page+limit if limit==len(result['products']) else current_page+len(result['products'])}" if result['products'] else "0-0"
         result['total_pages']=total_pages
         result["tags"]=[ {"id":tag.id,"tagName":tag.name} for tag in allData.mapped('product_tag_ids')]
         data =request.env["cspl_eccomerce_api.banners"].sudo().search([('is_active','=',True),('lang_id.code','=',lang)])
         result['category_banners']=[ f"/web/image/{request.env['ir.attachment'].sudo().search([('res_model', '=', 'cspl_eccomerce_api.banners'), ('res_id', '=', i.id)], limit=1).id}" for i in data]
-        result['category_name']=result['products'][0]['category']['name']
+        result['category_name']=service_categories.name
         return result
+
 
 
 
@@ -260,7 +299,7 @@ class CsplEccomerceApi(http.Controller):
 
 
     @http.route('/api/prod_filter', type='json', auth='public', csrf=False, cors='*')
-    def prod_filter(self,lang='en_US' ,uid=None,all=False,latest=False,top=False,rating=False,search=None,limit=12,page=1):
+    def prod_filter(self,sort=None,lang='en_US' ,uid=None,all=False,latest=False,top=False,rating=False,search=None,minPrice=0,maxPrice=100000,tags=[],limit=12,page=1):
         products = request.env['product.template'].with_context(lang=lang)
         if latest:
              sortVal = 'create_date desc'
@@ -269,19 +308,37 @@ class CsplEccomerceApi(http.Controller):
         elif rating:
              sortVal = 'rating_avg '
         else:
+            if all or search:
+                if sort=="latest":
+                    sortVal = 'create_date desc'
+                elif sort=="top":
+                    sortVal ='sales_count desc'
+                elif sort=="popular":
+                    sortVal = 'rating_avg desc'
+                elif sort=="price_high_to_low":
+                    sortVal = 'list_price desc'
+                elif sort=="price_low_to_high":
+                    sortVal = 'list_price'
+                else:
+                    sortVal = 'id desc'
+            else:
              sortVal = 'id desc'
+        domain=[("image_128","!=",False),('is_published','=',True),("type","=","product"),("list_price", ">=", minPrice),("list_price", "<=", maxPrice)]
         if search:
-            domain=[("image_128","!=",False),('is_published','=',True),("type","=","product"),("name","ilike",search)]
-        else:
-            domain=[("image_128","!=",False),('is_published','=',True),("type","=","product")]
+            domain.append(("name","ilike",search))
+        if len(tags)>0:
+            domain.append(('product_tag_ids','in',tags))
         products = products.search(domain)
         current_page=(page-1)*limit
         total_records=len(products)
         total_pages=(total_records // limit) +  (1 if total_records % limit > 0 else 0)
         result=self.get_prod_data(products.search(domain,order= sortVal,limit=limit, offset=current_page))
         result['total_records']=total_records
+        result['highestPrice'] =max(products.mapped('list_price'))
         result['current_page']=page
         result['total_pages']=total_pages
+        result["tags"]=[ {"id":tag.id,"tagName":tag.name} for tag in products.mapped('product_tag_ids')]
+        result['elements']=f"{current_page+1}-{current_page+limit if limit==len(result['products']) else current_page+len(result['products'])}" if result['products'] else "0-0"
         return result
 
 
@@ -435,20 +492,29 @@ class CsplEccomerceApi(http.Controller):
     
     
 ##################### order api ########################
-    def get_min_order_amount():
-        pass
+    def get_min_order_amount(self):
+        return request.env['ir.config_parameter'].sudo().get_param('cspl_eccomerce_api.customer_order_val')
+    def get_invoices_url(self,order):
+        invoice_ulrs=''
+        for invoice in order.invoice_ids:
+            invoice_ulrs=f"/web/image/{request.env['ir.attachment'].sudo().search([('res_model', '=', 'account.move'), ('res_id', '=', invoice.id)], limit=1).id}"
+        return invoice_ulrs
     def get_pricerange_price(self,product_id,quantity):
         for item in self.get_price_range(product_id):
             if item["minQuantity"] <= quantity <= item["maxQuantity"]:
                 return item["price"]
+            elif quantity > item["maxQuantity"]:
+                return item["price"]
         return product_id.list_price
     def get_origin_info(self,order):
-        return {
+        result = {
                     'orderId': order.id,
                     "order_name": order.name,
                     "total_amount": order.amount_total,
                     "total_amount_untaxed": order.amount_untaxed,
                     "total_tax":order.amount_tax,
+                    "date":order.create_date,
+                    "invoices": self.get_invoices_url(order),
                     "items": [
                             {
                             "orderLineId": singleItem.id,
@@ -458,11 +524,32 @@ class CsplEccomerceApi(http.Controller):
                             "productImage":'/web/image?model=product.template&id=' + str(singleItem.product_template_id.id) + '&field=image_128',
                             "currency":singleItem.product_template_id.currency_id.name,
                             "price":singleItem.product_template_id.list_price,
+                                
                             "quantity":singleItem.product_uom_qty,
                             "subtotal":singleItem.price_subtotal,
                             "minQuantity":singleItem.product_template_id.min_order_qty,
-                            }for  singleItem in order.order_line]
+                            }for  singleItem in order.order_line if singleItem.is_delivery == False]
                 }
+        for  singleItem in order.order_line:
+                    if singleItem.is_delivery:
+                        result['shipping']={
+                            "option_id": singleItem.option_id,
+                            "orderLineId": singleItem.id,
+                            "productId":singleItem.product_template_id.id,
+                            "productName":singleItem.name,
+                            "productSlug":singleItem.product_template_id.slug,
+                            "productImage":'/base/static/img/truck.png',
+                            "currency":singleItem.product_template_id.currency_id.name,
+                            "price":self.get_pricerange_price(singleItem.product_template_id,singleItem.product_uom_qty),
+                            "base_price":singleItem.product_template_id.list_price,
+                            "quantity":singleItem.product_uom_qty,
+                            "subtotal":singleItem.price_subtotal,
+                            "minQuantity":self.get_min_qty(singleItem.product_template_id) if self.get_min_qty(singleItem.product_template_id) else singleItem.product_template_id.min_order_qty,
+                            "priceRange":self.get_price_range(singleItem.product_template_id),
+                            "increaseBy":request.env['product.pricelist.item'].sudo().search([('product_tmpl_id', '=', singleItem.product_template_id.id),('pricelist_id', '=', 1)],limit=1).increase_unit_by if request.env['product.pricelist.item'].sudo().search([('product_tmpl_id', '=', singleItem.product_template_id.id),('pricelist_id', '=', 1)],limit=1).increase_unit_by >0 else 1,
+                            }
+        
+        return result
 
     @http.route('/api/addToCart', auth='public', type='json',csrf=False, cors='*')
     def addToCart(self,customer_id=None,customer_token=None,products=[],action='add'): 
@@ -512,7 +599,7 @@ class CsplEccomerceApi(http.Controller):
                     "total_amount": order.amount_total,
                     "total_amount_untaxed": order.amount_untaxed,
                     "total_tax":order.amount_tax,
-                    "mimOrderAmount": 100,
+                    "mimOrderAmount": self.get_min_order_amount() if self.get_min_order_amount() else 150,
                     "shipping":{},
                     "items": [
                             {
@@ -524,6 +611,7 @@ class CsplEccomerceApi(http.Controller):
                             "currency":singleItem.product_template_id.currency_id.name,
                             # "price":singleItem.product_template_id.list_price,
                             "price":self.get_pricerange_price(singleItem.product_template_id,singleItem.product_uom_qty),
+                            "base_price":singleItem.product_template_id.list_price,
                             "quantity":singleItem.product_uom_qty,
                             "subtotal":singleItem.price_subtotal,
                             "minQuantity":self.get_min_qty(singleItem.product_template_id) if self.get_min_qty(singleItem.product_template_id) else singleItem.product_template_id.min_order_qty,
@@ -538,7 +626,7 @@ class CsplEccomerceApi(http.Controller):
                             "productId":singleItem.product_template_id.id,
                             "productName":singleItem.name,
                             "productSlug":singleItem.product_template_id.slug,
-                            "productImage":'/web/image?model=product.template&id=' + str(singleItem.product_template_id.id) + '&field=image_128',
+                            "productImage":'/base/static/img/truck.png',
                             "currency":singleItem.product_template_id.currency_id.name,
                             "price":self.get_pricerange_price(singleItem.product_template_id,singleItem.product_uom_qty),
                             "quantity":singleItem.product_uom_qty,
@@ -848,3 +936,22 @@ class CsplEccomerceApi(http.Controller):
             return {'success': True,"carrier_id":order.carrier_id}
         except Exception as e:
             return {"error": e}
+        
+################################################################################################################################
+    @http.route('/api/sub_to_newsletter', type='json', auth='none',csrf=False, cors='*')
+    def sub_to_newsletter(self,email=None, **kw):
+        mailing_list = request.env['mailing.list'].sudo().search([("name","ilike","Newsletter")],limit=1)
+        if mailing_list:
+            existing_contact = request.env['mailing.contact'].sudo().search([('email', '=', email)], limit=1)
+            if existing_contact:
+                if existing_contact in mailing_list.contact_ids:
+                    return {'success': True,'exist':True, 'message': 'Email already subscribed to this newsletter'}
+                else:
+                    mailing_list.contact_ids = [(4, existing_contact.id)]
+                    return {'success': True,'exist':False, 'message': 'Existing contact added to the newsletter'}
+            else:
+                contact = request.env['mailing.contact'].sudo().create({'email': email})
+                mailing_list.contact_ids = [(4, contact.id)]
+                return {'success': True,'exist':False, 'message': 'New contact subscribed to the newsletter'}
+        else:
+            return {'success': False, 'error': 'Newsletter not found'}

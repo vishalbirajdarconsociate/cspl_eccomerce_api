@@ -10,8 +10,8 @@
 
                     <div class="app_settings_block" data-string="cspl" id="cspl" string="CSPL" data-key="cspl_eccomerce_api" >
 
-                        <h2>CSPL setting</h2>
-                        <div class="row mt16 o_settings_container" id="cspl_setting">
+                        <h2>Order</h2>
+                        <div class="row mt16 o_settings_container" id="cspl_setting_order">
                             <div class="col-12 col-lg-6 o_setting_box">
                                 <div class="o_setting_left_pane"/>
                                 <div class="o_setting_right_pane">
@@ -28,7 +28,22 @@
                                 </div> -->
                             </div>
                         </div>
-
+                        <h2>Cart</h2>
+                        <div class="row mt16 o_settings_container" id="cspl_setting_cart">
+                            <div class="col-12 col-lg-6 o_setting_box">
+                                <div class="o_setting_left_pane"/>
+                                <div class="row mt16">
+                                    <div class="col-12">
+                                      <label for="notify_cart_after" string="Send Abandon cart mail after " class="o_light_label"/>
+                                      <field class="col-2 text-center" name="notify_cart_after" widget="float_time" /> Hours.
+                                    </div>
+                                    <div class="col-12">
+                                        <label for="discount_on_abandoned_cart" string="Discount on abandoned cart : " class="o_light_label"/>
+                                        <field class="col-2 text-center" name="discount_on_abandoned_cart" widget="float" /> %.
+                                      </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                 </xpath>

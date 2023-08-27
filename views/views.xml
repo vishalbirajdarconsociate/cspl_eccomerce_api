@@ -68,7 +68,7 @@
     </record>
 
 
-    <menuitem name="cspl_api" id="cspl_eccomerce_api.menu_root" />
+    <menuitem name="cspl_api" id="cspl_eccomerce_api.menu_root"  web_icon="cspl_eccomerce_api,static/description/icon.png"/>
 
 
     <menuitem name="Banners" id="cspl_eccomerce_api.menu_1" parent="cspl_eccomerce_api.menu_root" />

@@ -1,0 +1,11 @@
+<odoo>
+    <record id="ir_cron_auto_transfer" model="ir.cron">
+        <field name="name"> Send mail to Abandoned carts</field>
+        <field name="model_id" ref="model_cspl_eccomerce_api_banners"/>
+        <field name="state">code</field>
+        <field name="code">model.notify_abandom_cart()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+    </record>
+</odoo>
