@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_cspl_eccomerce_api_banners,cspl_eccomerce_api.banners,model_cspl_eccomerce_api_banners,base.group_user,1,1,1,1
+access_product_price_range,product.price.range,model_product_price_range,base.group_user,1,1,1,1

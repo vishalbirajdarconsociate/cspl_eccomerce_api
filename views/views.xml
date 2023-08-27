@@ -1,0 +1,80 @@
+<odoo>
+  <data>
+
+
+    <!-- form view -->
+
+    <record id="cspl_eccomerce_api.form" model="ir.ui.view">
+      <field name="name">cspl_eccomerce_api.form</field>
+      <field name="model">cspl_eccomerce_api.banners</field>
+      <field name="arch" type="xml">
+        <form>
+          <sheet>
+            <group>
+              <group>
+                <field name="name" />
+                <field name="description" />
+              </group>
+              <group>
+                <field name="image" widget="image" class="oe_avatar" />
+              </group>
+              <group>
+                <field name="lang_id" />
+                <field name="is_active" />
+              </group>
+            </group>
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <record id="cspl_eccomerce_api_kanban" model="ir.ui.view">
+      <field name="name">cspl_eccomerce_api Kanban</field>
+      <field name="model">cspl_eccomerce_api.banners</field>
+      <field name="arch" type="xml">
+        <kanban>
+          <field name="id" />
+          <field name="name" />
+          <field name="image" />
+          <templates>
+            <t t-name="kanban-box">
+              <div class="oe_kanban_global_click">
+                <div class="o_kanban_image " >
+                  <img class="o_kanban_image_inner_pic" alt="user-guide" t-att-src="kanban_image('cspl_eccomerce_api.banners', 'image', record.id.raw_value)" />
+                </div>
+                <div class="oe_kanban_details">
+                  <field name="name" />
+                  <!-- <field name="is_active" /> -->
+                </div>             
+                <div class="oe_kanban_details">
+                  <!-- <field name="name" /> -->
+                   Active <field name="is_active" />
+                </div>
+                <div class="oe_kanban_details">
+                  <field name="lang_id" />
+                </div>
+              </div>
+            </t>
+          </templates>
+        </kanban>
+      </field>
+    </record>
+
+
+    <record model="ir.actions.act_window" id="cspl_eccomerce_api.action_window">
+      <field name="name">Banners</field>
+      <field name="res_model">cspl_eccomerce_api.banners</field>
+      <field name="view_mode">kanban,tree,form</field>
+    </record>
+
+
+    <menuitem name="cspl_api" id="cspl_eccomerce_api.menu_root" />
+
+
+    <menuitem name="Banners" id="cspl_eccomerce_api.menu_1" parent="cspl_eccomerce_api.menu_root" />
+    <menuitem name="Config" id="cspl_eccomerce_api.menu_2" parent="cspl_eccomerce_api.menu_root" />
+    <menuitem name="Manage Banners" id="cspl_eccomerce_api.menu_1_list" parent="cspl_eccomerce_api.menu_1"
+      action="cspl_eccomerce_api.action_window" />
+
+  </data>
+</odoo>
